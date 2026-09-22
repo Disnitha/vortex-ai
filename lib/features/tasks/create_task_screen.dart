@@ -5,6 +5,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/task.dart';
 import '../../core/services/task_repository.dart';
+import '../scheduler/ai_scheduler/schedule_generation_service.dart';
+import '../../core/services/schedule_repository.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   final Task? task;
@@ -116,6 +118,48 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       );
 
       await TaskRepository.instance.updateTask(updatedTask);
+      final scheduleRepository = ScheduleRepository.instance;
+
+      final existingSchedule =
+          scheduleRepository.getScheduledTaskForTask(
+        updatedTask.id,
+      );
+
+      if (existingSchedule != null) {
+        await scheduleRepository.removeScheduledTask(
+          existingSchedule.id,
+        );
+      }
+
+      final now = DateTime.now();
+
+      final scheduleStart = now.isAfter(
+        DateTime(now.year, now.month, now.day, 8, 0),
+      )
+          ? now
+          : DateTime(
+              now.year,
+              now.month,
+              now.day,
+              8,
+              0,
+            );
+
+      final scheduleEnd = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        22,
+        0,
+      );
+
+      if (scheduleStart.isBefore(scheduleEnd)) {
+        await ScheduleGenerationService().scheduleTaskAutomatically(
+          task: updatedTask,
+          availableStart: scheduleStart,
+          availableEnd: scheduleEnd,
+        );
+      }
     } else {
       final task = Task(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -131,6 +175,31 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       );
 
       await TaskRepository.instance.addTask(task);
+
+      // Automatically find a suitable time for the new task.
+      final now = DateTime.now();
+
+      final scheduleStart = now.isAfter(
+        DateTime(now.year, now.month, now.day, 8, 0),
+      )
+          ? now
+          : DateTime(now.year, now.month, now.day, 8, 0);
+
+      final scheduleEnd = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        22,
+        0,
+      );
+
+      if (scheduleStart.isBefore(scheduleEnd)) {
+        await ScheduleGenerationService().scheduleTaskAutomatically(
+          task: task,
+          availableStart: scheduleStart,
+          availableEnd: scheduleEnd,
+        );
+      }
     }
 
     if (!mounted) return;

@@ -56,4 +56,22 @@ class ScheduleGenerationService {
 
     return newBlocks;
   }
+
+  Future<TimeBlock?> scheduleTaskAutomatically({
+    required Task task,
+    required DateTime availableStart,
+    required DateTime availableEnd,
+  }) async {
+    final generatedBlocks = await generateAndSaveSchedule(
+      tasks: [task],
+      availableStart: availableStart,
+      availableEnd: availableEnd,
+    );
+
+    if (generatedBlocks.isEmpty) {
+      return null;
+    }
+
+    return generatedBlocks.first;
+  }
 }

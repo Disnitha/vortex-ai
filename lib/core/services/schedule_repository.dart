@@ -4,23 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../models/scheduled_task.dart';
 
 class ScheduleRepository extends ChangeNotifier {
-  Future<void> removeScheduledTasksForDate(DateTime date) async {
-    final tasksForDate = getScheduledTasksForDate(date);
-
-    final box = Hive.box(_boxName);
-
-    for (final scheduledTask in tasksForDate) {
-      await box.delete(scheduledTask.id);
-    }
-
-    _scheduledTasks.removeWhere((scheduledTask) {
-      return scheduledTask.startTime.year == date.year &&
-          scheduledTask.startTime.month == date.month &&
-          scheduledTask.startTime.day == date.day;
-    });
-
-    notifyListeners();
-  }
   ScheduleRepository._();
 
   static final ScheduleRepository instance = ScheduleRepository._();
@@ -84,7 +67,9 @@ class ScheduleRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> removeScheduledTask(String scheduledTaskId) async {
+  Future<void> removeScheduledTask(
+    String scheduledTaskId,
+  ) async {
     _scheduledTasks.removeWhere(
       (scheduledTask) => scheduledTask.id == scheduledTaskId,
     );
@@ -96,12 +81,46 @@ class ScheduleRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<ScheduledTask> getScheduledTasksForDate(DateTime date) {
+  List<ScheduledTask> getScheduledTasksForDate(
+    DateTime date,
+  ) {
     return _scheduledTasks.where((scheduledTask) {
       return scheduledTask.startTime.year == date.year &&
           scheduledTask.startTime.month == date.month &&
           scheduledTask.startTime.day == date.day;
     }).toList();
+  }
+
+  ScheduledTask? getScheduledTaskForTask(
+    String taskId,
+  ) {
+    for (final scheduledTask in _scheduledTasks) {
+      if (scheduledTask.taskId == taskId) {
+        return scheduledTask;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> removeScheduledTasksForDate(
+    DateTime date,
+  ) async {
+    final tasksForDate = getScheduledTasksForDate(date);
+
+    final box = Hive.box(_boxName);
+
+    for (final scheduledTask in tasksForDate) {
+      await box.delete(scheduledTask.id);
+    }
+
+    _scheduledTasks.removeWhere((scheduledTask) {
+      return scheduledTask.startTime.year == date.year &&
+          scheduledTask.startTime.month == date.month &&
+          scheduledTask.startTime.day == date.day;
+    });
+
+    notifyListeners();
   }
 
   Future<void> _saveScheduledTask(

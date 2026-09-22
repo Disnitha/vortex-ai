@@ -95,5 +95,115 @@ void main() {
 
       expect(result, isNotEmpty);
     });
+
+    test('automatically schedules a task into an available slot', () async {
+      final service = ScheduleGenerationService();
+
+      final task = Task(
+        id: 'auto_task',
+        title: 'Automatic Task',
+        priority: TaskPriority.high,
+        estimatedMinutes: 60,
+        createdAt: DateTime.now(),
+      );
+
+      final start = DateTime(2026, 9, 24, 9, 0);
+      final end = DateTime(2026, 9, 24, 12, 0);
+
+      final result = await service.scheduleTaskAutomatically(
+        task: task,
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(result, isNotNull);
+      expect(result!.taskId, 'auto_task');
+      expect(result.startTime, start);
+      expect(
+        result.endTime,
+          DateTime(2026, 9, 24, 10, 0),
+      );
+    });
+
+    test('does not automatically schedule a task after its deadline',
+        () async {
+      final service = ScheduleGenerationService();
+
+      final task = Task(
+        id: 'deadline_task',
+        title: 'Deadline Task',
+        priority: TaskPriority.high,
+        estimatedMinutes: 60,
+        deadline: DateTime(2026, 9, 25, 9, 30),
+        createdAt: DateTime.now(),
+      );
+
+      final start = DateTime(2026, 9, 25, 9, 0);
+      final end = DateTime(2026, 9, 25, 12, 0);
+
+      final result = await service.scheduleTaskAutomatically(
+        task: task,
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(result, isNull);
+    });
+    test('reschedules an edited task with its updated duration', () async {
+      final repository = ScheduleRepository.instance;
+
+      final service = ScheduleGenerationService(
+        scheduleRepository: repository,
+      );
+
+      final originalTask = Task(
+        id: 'edit_schedule_task',
+        title: 'Physics Revision',
+        priority: TaskPriority.high,
+        estimatedMinutes: 60,
+        createdAt: DateTime.now(),
+      );
+
+      final start = DateTime(2026, 9, 26, 9, 0);
+      final end = DateTime(2026, 9, 26, 14, 0);
+
+      final originalSchedule =
+          await service.scheduleTaskAutomatically(
+        task: originalTask,
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(originalSchedule, isNotNull);
+      expect(
+        originalSchedule!.endTime,
+        DateTime(2026, 9, 26, 10, 0),
+      );
+
+      await repository.removeScheduledTask(
+        originalSchedule.id,
+      );
+
+      final updatedTask = originalTask.copyWith(
+        estimatedMinutes: 180,
+      );
+
+      final updatedSchedule =
+          await service.scheduleTaskAutomatically(
+        task: updatedTask,
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(updatedSchedule, isNotNull);
+      expect(
+        updatedSchedule!.startTime,
+        DateTime(2026, 9, 26, 9, 0),
+      );
+      expect(
+        updatedSchedule.endTime,
+        DateTime(2026, 9, 26, 12, 0),
+      );
+    });
   });
 }
