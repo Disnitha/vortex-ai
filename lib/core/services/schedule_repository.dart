@@ -4,6 +4,23 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../models/scheduled_task.dart';
 
 class ScheduleRepository extends ChangeNotifier {
+  Future<void> removeScheduledTasksForDate(DateTime date) async {
+    final tasksForDate = getScheduledTasksForDate(date);
+
+    final box = Hive.box(_boxName);
+
+    for (final scheduledTask in tasksForDate) {
+      await box.delete(scheduledTask.id);
+    }
+
+    _scheduledTasks.removeWhere((scheduledTask) {
+      return scheduledTask.startTime.year == date.year &&
+          scheduledTask.startTime.month == date.month &&
+          scheduledTask.startTime.day == date.day;
+    });
+
+    notifyListeners();
+  }
   ScheduleRepository._();
 
   static final ScheduleRepository instance = ScheduleRepository._();

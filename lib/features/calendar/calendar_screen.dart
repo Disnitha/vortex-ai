@@ -27,6 +27,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _selectedDate = DateTime.now();
 
+  Future<void> _clearSchedule() async {
+    final hasSchedule = _scheduledTasks.isNotEmpty;
+
+    if (!hasSchedule) {
+      _showMessage('No scheduled tasks to clear.');
+      return;
+    }
+
+    final shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Clear Schedule?'),
+          content: const Text(
+            'This will remove the scheduled time blocks for this day. '
+            'Your tasks will not be deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Clear'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldClear != true) {
+      return;
+    }
+
+    await _scheduleRepository.removeScheduledTasksForDate(
+      _selectedDate,
+    );
+
+    _showMessage('Schedule cleared.');
+  }
+
   Future<void> _generateSchedule() async {
     final tasks = _taskRepository.tasks.where((task) {
       return task.status == TaskStatus.pending ||
@@ -165,13 +211,26 @@ void _showMessage(String message) {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: _generateSchedule,
-                    icon: const Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 18,
-                    ),
-                    label: const Text('Generate'),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _clearSchedule,
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Clear'),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      FilledButton.icon(
+                        onPressed: _generateSchedule,
+                        icon: const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Generate'),
+                      ),
+                    ],
                   ),
                 ],
               ),
