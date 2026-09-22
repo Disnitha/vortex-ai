@@ -123,6 +123,15 @@ class ScheduleRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> clearAll() async {
+    _scheduledTasks.clear();
+
+    final box = Hive.box(_boxName);
+    await box.clear();
+
+    notifyListeners();
+  }
+
   Future<void> _saveScheduledTask(
     ScheduledTask scheduledTask,
   ) async {
