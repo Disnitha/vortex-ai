@@ -1,0 +1,59 @@
+import '../../../core/services/schedule_repository.dart';
+import '../../../models/task.dart';
+import '../time_blocking/time_block.dart';
+import 'scheduling_coordinator.dart';
+
+class ScheduleGenerationService {
+  ScheduleGenerationService({
+    SchedulingCoordinator? coordinator,
+    ScheduleRepository? scheduleRepository,
+  })  : _coordinator = coordinator ?? SchedulingCoordinator(),
+        _scheduleRepository =
+            scheduleRepository ?? ScheduleRepository.instance;
+
+  final SchedulingCoordinator _coordinator;
+  final ScheduleRepository _scheduleRepository;
+
+  Future<List<TimeBlock>> generateAndSaveSchedule({
+    required List<Task> tasks,
+    required DateTime availableStart,
+    required DateTime availableEnd,
+  }) async {
+    final existingScheduledTasks =
+        _scheduleRepository.getScheduledTasksForDate(
+      availableStart,
+    );
+
+    final existingBlocks = existingScheduledTasks.map(
+      (scheduledTask) {
+        return TimeBlock(
+          id: scheduledTask.id,
+          taskId: scheduledTask.taskId,
+          startTime: scheduledTask.startTime,
+          endTime: scheduledTask.endTime,
+        );
+      },
+    ).toList();
+
+    final generatedBlocks = _coordinator.generateSchedule(
+      tasks: tasks,
+      availableStart: availableStart,
+      availableEnd: availableEnd,
+      existingBlocks: existingBlocks,
+    );
+
+    final newBlocks = generatedBlocks.where((block) {
+      return !existingBlocks.any(
+        (existingBlock) => existingBlock.id == block.id,
+      );
+    }).toList();
+
+    for (final block in newBlocks) {
+      await _scheduleRepository.addScheduledTask(
+        block.toScheduledTask(),
+      );
+    }
+
+    return newBlocks;
+  }
+}
