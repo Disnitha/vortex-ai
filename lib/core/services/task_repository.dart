@@ -78,6 +78,22 @@ class TaskRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateTask(Task updatedTask) async {
+    final index = _tasks.indexWhere(
+      (task) => task.id == updatedTask.id,
+    );
+
+    if (index == -1) {
+      return;
+    }
+
+    _tasks[index] = updatedTask;
+
+    await _saveTask(updatedTask);
+
+    notifyListeners();
+  }
+
   Future<void> removeTask(String taskId) async {
     _tasks.removeWhere(
       (task) => task.id == taskId,

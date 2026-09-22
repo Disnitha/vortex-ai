@@ -7,7 +7,14 @@ import '../../models/task.dart';
 import '../../core/services/task_repository.dart';
 
 class CreateTaskScreen extends StatefulWidget {
-  const CreateTaskScreen({super.key});
+  final Task? task;
+
+  const CreateTaskScreen({
+    super.key,
+    this.task,
+  });
+
+  bool get isEditing => task != null;
 
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -29,6 +36,23 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     'Personal',
     'Health',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final task = widget.task;
+
+    if (task != null) {
+      _titleController.text = task.title;
+      _descriptionController.text = task.description ?? '';
+
+      _priority = task.priority;
+      _category = task.category;
+      _estimatedMinutes = task.estimatedMinutes;
+      _deadline = task.deadline;
+    }
+  }
 
   @override
   void dispose() {
@@ -77,20 +101,37 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       return;
     }
 
-    final task = Task(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      priority: _priority,
-      deadline: _deadline,
-      estimatedMinutes: _estimatedMinutes,
-      category: _category,
-      createdAt: DateTime.now(),
-    );
+    final existingTask = widget.task;
 
-    await TaskRepository.instance.addTask(task);
+    if (existingTask != null) {
+      final updatedTask = existingTask.copyWith(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        priority: _priority,
+        deadline: _deadline,
+        estimatedMinutes: _estimatedMinutes,
+        category: _category,
+      );
+
+      await TaskRepository.instance.updateTask(updatedTask);
+    } else {
+      final task = Task(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        priority: _priority,
+        deadline: _deadline,
+        estimatedMinutes: _estimatedMinutes,
+        category: _category,
+        createdAt: DateTime.now(),
+      );
+
+      await TaskRepository.instance.addTask(task);
+    }
 
     if (!mounted) return;
 
@@ -124,8 +165,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Create Task',
+        title: Text(
+          widget.isEditing ? 'Edit Task' : 'Create Task',
           style: AppTextStyles.title,
         ),
       ),
@@ -135,8 +176,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'New Task',
+              Text(
+                widget.isEditing ? 'Edit Task' : 'New Task',
                 style: AppTextStyles.headline,
               ),
 
@@ -328,7 +369,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _createTask,
                   icon: const Icon(Icons.add_task_rounded),
-                  label: const Text('Create Task'),
+                  label: Text(
+                    widget.isEditing ? 'Save Changes' : 'Create Task',
+                  ),
                 ),
               ),
 

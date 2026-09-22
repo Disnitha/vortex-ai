@@ -5,6 +5,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/task.dart';
+import '../tasks/create_task_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -300,6 +301,18 @@ class _TaskItem extends StatelessWidget {
     }
   }
 
+
+  Future<void> _editTask(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateTaskScreen(
+          task: task,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusColor(task.status);
@@ -405,6 +418,16 @@ class _TaskItem extends StatelessWidget {
                 ),
 
                 const Spacer(),
+
+                IconButton(
+                  onPressed: () => _editTask(context),
+                  tooltip: 'Edit task',
+                  icon: const Icon(
+                    Icons.edit_rounded,
+                  ),
+                ),
+
+                const SizedBox(width: AppSpacing.sm),
 
                 FilledButton.icon(
                   onPressed: () => _handleStatusAction(context),
