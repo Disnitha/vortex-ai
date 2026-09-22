@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../calendar/calendar_screen.dart';
 import '../home/home_screen.dart';
 import '../tasks/tasks_screen.dart';
-import '../../core/theme/app_colors.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -17,10 +18,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _screens = const [
     HomeScreen(),
     TasksScreen(),
-    _PlaceholderScreen(
-      title: 'Calendar',
-      icon: Icons.calendar_month_rounded,
-    ),
+    CalendarScreen(),
     _PlaceholderScreen(
       title: 'AI Assistant',
       icon: Icons.auto_awesome_rounded,

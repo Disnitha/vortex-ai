@@ -48,6 +48,15 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+  Future<void> _openTask(Task task) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateTaskScreen(task: task),
+      ),
+    );
+  }
+
   Future<void> _deleteTask(Task task) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -196,6 +205,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     task: task,
                     priority: _priorityLabel(task.priority),
                     icon: _categoryIcon(task.category),
+                    onTap: () => _openTask(task),
                     onLongPress: () => _deleteTask(task),
                   ),
                 ),
@@ -213,12 +223,15 @@ class _TaskCard extends StatelessWidget {
   final Task task;
   final String priority;
   final IconData icon;
+  final VoidCallback onTap;
   final VoidCallback onLongPress;
+  
 
   const _TaskCard({
     required this.task,
     required this.priority,
     required this.icon,
+    required this.onTap,
     required this.onLongPress,
   });
 
@@ -227,6 +240,7 @@ class _TaskCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
