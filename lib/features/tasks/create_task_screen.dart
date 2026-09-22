@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/task.dart';
+import '../../core/services/task_repository.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({super.key});
@@ -66,7 +67,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     });
   }
 
-  void _createTask() {
+  Future<void> _createTask() async {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -89,7 +90,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       createdAt: DateTime.now(),
     );
 
-    Navigator.pop(context, task);
+    await TaskRepository.instance.addTask(task);
+
+    if (!mounted) return;
+
+    Navigator.pop(context);
   }
 
   String _formatDeadline(DateTime date) {
