@@ -209,5 +209,59 @@ void main() {
         TaskStatus.missed,
       );
     });
+
+    test(
+      'marks a task missed and creates a new schedule',
+      () async {
+        final task = Task(
+          id: 'auto_reschedule_task',
+          title: 'Physics Revision',
+          status: TaskStatus.pending,
+          estimatedMinutes: 60,
+          createdAt: DateTime.now(),
+        );
+
+        await TaskRepository.instance.addTask(task);
+
+        final oldSchedule = ScheduledTask(
+          id: 'old_schedule',
+          taskId: task.id,
+          startTime: DateTime(2026, 10, 2, 9, 0),
+          endTime: DateTime(2026, 10, 2, 10, 0),
+        );
+
+        await ScheduleRepository.instance.addScheduledTask(
+          oldSchedule,
+        );
+
+        final missedCount =
+            await MissedTaskService.instance.detectMissedTasks(
+          now: DateTime(2026, 10, 2, 11, 0),
+        );
+
+        expect(missedCount, 1);
+
+        final updatedTask =
+            TaskRepository.instance.tasks.firstWhere(
+          (storedTask) => storedTask.id == task.id,
+        );
+
+        expect(updatedTask.status, TaskStatus.missed);
+
+        final schedules =
+            ScheduleRepository.instance.scheduledTasks.where(
+          (scheduledTask) => scheduledTask.taskId == task.id,
+        ).toList();
+
+        expect(schedules.length, 1);
+        expect(schedules.first.id, isNot(oldSchedule.id));
+        expect(
+          schedules.first.startTime.isAfter(
+            oldSchedule.endTime,
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }

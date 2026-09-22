@@ -1,6 +1,7 @@
 import '../../../core/services/task_repository.dart';
 import '../../../core/services/schedule_repository.dart';
 import '../../../models/task.dart';
+import 'missed_task_rescheduling_service.dart';
 
 class MissedTaskService {
   MissedTaskService._();
@@ -38,6 +39,20 @@ class MissedTaskService {
       await taskRepository.markTaskMissed(task.id);
 
       missedCount++;
+
+      await scheduleRepository.removeScheduledTask(
+        scheduledTask.id,
+      );
+
+      final missedTask = task.copyWith(
+        status: TaskStatus.missed,
+      );
+
+      await MissedTaskReschedulingService.instance
+          .rescheduleTaskAutomatically(
+        missedTask,
+        now: currentTime,
+      );
     }
 
     return missedCount;
