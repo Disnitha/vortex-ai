@@ -118,5 +118,61 @@ void main() {
 
       expect(result, isEmpty);
     });
+
+    test('does not schedule a task after its deadline', () {
+      final coordinator = SchedulingCoordinator();
+
+      final task = Task(
+        id: 'deadline_task',
+        title: 'Deadline Task',
+        priority: TaskPriority.high,
+        estimatedMinutes: 60,
+        deadline: DateTime(2026, 9, 9, 30),
+        createdAt: DateTime.now(),
+      );
+
+      final start = DateTime(2026, 9, 22, 9, 0);
+      final end = DateTime(2026, 9, 22, 12, 0);
+
+      final result = coordinator.generateSchedule(
+        tasks: [task],
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(result, isEmpty);
+    });
+
+    test('allows a task to finish exactly at its deadline', () {
+      final coordinator = SchedulingCoordinator();
+
+      final task = Task(
+        id: 'deadline_task',
+        title: 'Deadline Task',
+        priority: TaskPriority.high,
+        estimatedMinutes: 60,
+        deadline: DateTime(2026, 9, 22, 10, 0),
+        createdAt: DateTime.now(),
+      );
+
+      final start = DateTime(2026, 9, 22, 9, 0);
+      final end = DateTime(2026, 9, 22, 12, 0);
+
+      final result = coordinator.generateSchedule(
+        tasks: [task],
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(result.length, 1);
+      expect(
+        result[0].startTime,
+        DateTime(2026, 9, 22, 9, 0),
+      );
+      expect(
+        result[0].endTime,
+        DateTime(2026, 9, 22, 10, 0),
+      );
+    });
   });
 }

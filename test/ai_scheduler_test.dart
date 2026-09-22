@@ -5,6 +5,55 @@ import 'package:vortex_ai/models/task.dart';
 
 void main() {
   group('AiScheduler', () {
+
+    test('places tasks with no deadline after tasks with deadlines', () {
+      final scheduler = const AiScheduler();
+
+      final tasks = [
+        Task(
+          id: '1',
+          title: 'No Deadline',
+          priority: TaskPriority.medium,
+          createdAt: DateTime.now(),
+        ),
+        Task(
+          id: '2',
+          title: 'Has Deadline',
+          priority: TaskPriority.medium,
+          deadline: DateTime(2026, 9, 25),
+          createdAt: DateTime.now(),
+        ),
+      ];
+
+      final result = scheduler.prioritizeTasks(tasks);
+
+      expect(result[0].title, 'Has Deadline');
+      expect(result[1].title, 'No Deadline');
+    });
+
+    test('keeps in-progress tasks eligible for scheduling', () {
+      final scheduler = const AiScheduler();
+
+      final tasks = [
+        Task(
+          id: '1',
+          title: 'In Progress Task',
+          status: TaskStatus.inProgress,
+          createdAt: DateTime.now(),
+        ),
+        Task(
+          id: '2',
+          title: 'Completed Task',
+          status: TaskStatus.completed,
+          createdAt: DateTime.now(),
+        ),
+      ];
+
+      final result = scheduler.prioritizeTasks(tasks);
+
+      expect(result.length, 1);
+      expect(result[0].title, 'In Progress Task');
+    });
     test('prioritizes urgent tasks before lower priority tasks', () {
       final scheduler = const AiScheduler();
 

@@ -38,6 +38,12 @@ class SchedulingCoordinator {
         continue;
       }
 
+      // Do not schedule a task if it would finish after its deadline.
+      if (task.deadline != null &&
+          timeBlock.endTime.isAfter(task.deadline!)) {
+        continue;
+      }
+
       scheduledBlocks.add(timeBlock);
     }
 
