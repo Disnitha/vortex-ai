@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/theme/app_theme.dart';
-
-
 import 'features/navigation/main_navigation.dart';
 
-void main() {
+import 'core/services/task_repository.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+
+  await TaskRepository.instance.init();
+
   runApp(const VortexAI());
 }
 

@@ -207,62 +207,214 @@ class _TaskItem extends StatelessWidget {
     }
   }
 
+  String _statusLabel(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return 'Pending';
+      case TaskStatus.inProgress:
+        return 'In Progress';
+      case TaskStatus.completed:
+        return 'Completed';
+      case TaskStatus.missed:
+        return 'Missed';
+    }
+  }
+
+  IconData _statusIcon(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return Icons.schedule_rounded;
+      case TaskStatus.inProgress:
+        return Icons.play_circle_outline_rounded;
+      case TaskStatus.completed:
+        return Icons.check_circle_rounded;
+      case TaskStatus.missed:
+        return Icons.warning_amber_rounded;
+    }
+  }
+
+  Color _statusColor(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.pending:
+        return AppColors.primaryLight;
+      case TaskStatus.inProgress:
+        return Colors.orange;
+      case TaskStatus.completed:
+        return Colors.green;
+      case TaskStatus.missed:
+        return Colors.red;
+    }
+  }
+
+  void _handleStatusAction(BuildContext context) {
+    final repository = TaskRepository.instance;
+
+    switch (task.status) {
+      case TaskStatus.pending:
+        repository.startTask(task.id);
+        break;
+
+      case TaskStatus.inProgress:
+        repository.completeTask(task.id);
+        break;
+
+      case TaskStatus.completed:
+        repository.reopenTask(task.id);
+        break;
+
+      case TaskStatus.missed:
+        repository.reopenTask(task.id);
+        break;
+    }
+  }
+
+  String _actionLabel() {
+    switch (task.status) {
+      case TaskStatus.pending:
+        return 'Start';
+
+      case TaskStatus.inProgress:
+        return 'Complete';
+
+      case TaskStatus.completed:
+        return 'Reopen';
+
+      case TaskStatus.missed:
+        return 'Reopen';
+    }
+  }
+
+  IconData _actionIcon() {
+    switch (task.status) {
+      case TaskStatus.pending:
+        return Icons.play_arrow_rounded;
+
+      case TaskStatus.inProgress:
+        return Icons.check_rounded;
+
+      case TaskStatus.completed:
+        return Icons.replay_rounded;
+
+      case TaskStatus.missed:
+        return Icons.replay_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final statusColor = _statusColor(task.status);
+    final isCompleted = task.status == TaskStatus.completed;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                icon,
-                color: AppColors.primaryLight,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: AppColors.primaryLight,
+                  ),
+                ),
+
+                const SizedBox(width: AppSpacing.md),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        style: AppTextStyles.title.copyWith(
+                          decoration: isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      Text(
+                        '${task.category} • ${task.estimatedMinutes} min',
+                        style: AppTextStyles.body.copyWith(
+                          fontSize: 13,
+                        ),
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      Text(
+                        '${_priorityLabel(task.priority)} priority',
+                        style: const TextStyle(
+                          color: AppColors.primaryLight,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Icon(
+                  _statusIcon(task.status),
+                  color: statusColor,
+                ),
+              ],
             ),
 
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: AppTextStyles.title,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
                   ),
-
-                  const SizedBox(height: 4),
-
-                  Text(
-                    '${task.category} • ${task.estimatedMinutes} min',
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 13,
-                    ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    '${_priorityLabel(task.priority)} priority',
-                    style: const TextStyle(
-                      color: AppColors.primaryLight,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _statusIcon(task.status),
+                        size: 15,
+                        color: statusColor,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        _statusLabel(task.status),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
+                const Spacer(),
+
+                FilledButton.icon(
+                  onPressed: () => _handleStatusAction(context),
+                  icon: Icon(
+                    _actionIcon(),
+                    size: 18,
+                  ),
+                  label: Text(_actionLabel()),
+                ),
+              ],
             ),
           ],
         ),
