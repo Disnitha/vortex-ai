@@ -19,24 +19,74 @@ class _TasksScreenState extends State<TasksScreen> {
 
   List<Task> get _tasks => _repository.tasks;
 
+  @override
+  void initState() {
+    super.initState();
+
+    _repository.addListener(_onTasksChanged);
+  }
+
+  @override
+  void dispose() {
+    _repository.removeListener(_onTasksChanged);
+
+    super.dispose();
+  }
+
+  void _onTasksChanged() {
+    if (!mounted) return;
+
+    setState(() {});
+  }
+
   Future<void> _openCreateTask() async {
-    final task = await Navigator.push<Task>(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const CreateTaskScreen(),
       ),
     );
+  }
 
-    if (task == null || !mounted) return;
+  Future<void> _deleteTask(Task task) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Task?'),
+          content: Text(
+            'Are you sure you want to delete "${task.title}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
 
-    _repository.addTask(task);
+    if (shouldDelete != true) {
+      return;
+    }
 
-    setState(() {});
+    await _repository.removeTask(task.id);
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Task "${task.title}" created successfully.',
+          'Task "${task.title}" deleted.',
         ),
       ),
     );
@@ -143,11 +193,10 @@ class _TasksScreenState extends State<TasksScreen> {
                     bottom: AppSpacing.md,
                   ),
                   child: _TaskCard(
-                    title: task.title,
-                    category: task.category,
+                    task: task,
                     priority: _priorityLabel(task.priority),
-                    duration: '${task.estimatedMinutes} min',
                     icon: _categoryIcon(task.category),
+                    onLongPress: () => _deleteTask(task),
                   ),
                 ),
               ),
@@ -161,89 +210,91 @@ class _TasksScreenState extends State<TasksScreen> {
 }
 
 class _TaskCard extends StatelessWidget {
-  final String title;
-  final String category;
+  final Task task;
   final String priority;
-  final String duration;
   final IconData icon;
+  final VoidCallback onLongPress;
 
   const _TaskCard({
-    required this.title,
-    required this.category,
+    required this.task,
     required this.priority,
-    required this.duration,
     required this.icon,
+    required this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: AppColors.primaryLight,
+                  size: 24,
+                ),
               ),
-              child: Icon(
-                icon,
-                color: AppColors.primaryLight,
-                size: 24,
-              ),
-            ),
 
-            const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.md),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.title,
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  Text(
-                    '$category • $duration',
-                    style: AppTextStyles.body.copyWith(
-                      fontSize: 13,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      style: AppTextStyles.title,
                     ),
-                  ),
 
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      priority,
-                      style: const TextStyle(
-                        color: AppColors.primaryLight,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                    Text(
+                      '${task.category} • ${task.estimatedMinutes} min',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 13,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
 
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
-            ),
-          ],
+                    const SizedBox(height: 8),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        priority,
+                        style: const TextStyle(
+                          color: AppColors.primaryLight,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
         ),
       ),
     );

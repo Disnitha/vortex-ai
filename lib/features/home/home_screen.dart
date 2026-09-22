@@ -6,6 +6,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/task.dart';
 import '../tasks/create_task_screen.dart';
+import '../tasks/task_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -247,6 +248,17 @@ class _TaskItem extends StatelessWidget {
     }
   }
 
+  void _openTaskDetails(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TaskDetailsScreen(
+          task: task,
+        ),
+      ),
+    );
+  }
+
   void _handleStatusAction(BuildContext context) {
     final repository = TaskRepository.instance;
 
@@ -313,133 +325,182 @@ class _TaskItem extends StatelessWidget {
     );
   }
 
+  Future<void> _deleteTask(BuildContext context) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Task?'),
+          content: Text(
+            'Are you sure you want to delete "${task.title}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    await TaskRepository.instance.removeTask(task.id);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Task "${task.title}" deleted.',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusColor = _statusColor(task.status);
     final isCompleted = task.status == TaskStatus.completed;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openTaskDetails(context),
+        onLongPress: () => _deleteTask(context),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: AppColors.primaryLight,
+                    ),
                   ),
-                  child: Icon(
-                    icon,
-                    color: AppColors.primaryLight,
-                  ),
-                ),
 
-                const SizedBox(width: AppSpacing.md),
+                  const SizedBox(width: AppSpacing.md),
 
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.title,
-                        style: AppTextStyles.title.copyWith(
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          task.title,
+                          style: AppTextStyles.title.copyWith(
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 4),
+                        const SizedBox(height: 4),
 
-                      Text(
-                        '${task.category} • ${task.estimatedMinutes} min',
-                        style: AppTextStyles.body.copyWith(
-                          fontSize: 13,
+                        Text(
+                          '${task.category} • ${task.estimatedMinutes} min',
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 6),
+                        const SizedBox(height: 6),
 
-                      Text(
-                        '${_priorityLabel(task.priority)} priority',
-                        style: const TextStyle(
-                          color: AppColors.primaryLight,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                        Text(
+                          '${_priorityLabel(task.priority)} priority',
+                          style: const TextStyle(
+                            color: AppColors.primaryLight,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
-                Icon(
-                  _statusIcon(task.status),
-                  color: statusColor,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSpacing.md),
-
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                  Icon(
+                    _statusIcon(task.status),
+                    color: statusColor,
                   ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _statusIcon(task.status),
-                        size: 15,
-                        color: statusColor,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        _statusLabel(task.status),
-                        style: TextStyle(
+                ],
+              ),
+
+              const SizedBox(height: AppSpacing.md),
+
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _statusIcon(task.status),
+                          size: 15,
                           color: statusColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 5),
+                        Text(
+                          _statusLabel(task.status),
+                          style: TextStyle(
+                          color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                const Spacer(),
+                  const Spacer(),
 
-                IconButton(
-                  onPressed: () => _editTask(context),
-                  tooltip: 'Edit task',
-                  icon: const Icon(
-                    Icons.edit_rounded,
+                  IconButton(
+                    onPressed: () => _editTask(context),
+                    tooltip: 'Edit task',
+                    icon: const Icon(
+                      Icons.edit_rounded,
+                    ),
                   ),
-                ),
 
-                const SizedBox(width: AppSpacing.sm),
+                  const SizedBox(width: AppSpacing.sm),
 
-                FilledButton.icon(
-                  onPressed: () => _handleStatusAction(context),
-                  icon: Icon(
-                    _actionIcon(),
-                    size: 18,
+                  FilledButton.icon(
+                    onPressed: () => _handleStatusAction(context),
+                    icon: Icon(
+                      _actionIcon(),
+                      size: 18,
+                    ),
+                    label: Text(_actionLabel()),
                   ),
-                  label: Text(_actionLabel()),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
