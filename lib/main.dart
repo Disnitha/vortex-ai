@@ -5,6 +5,7 @@ import 'core/theme/app_theme.dart';
 import 'features/navigation/main_navigation.dart';
 
 import 'core/services/task_repository.dart';
+import 'core/services/schedule_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,6 +13,7 @@ Future<void> main() async {
   await Hive.initFlutter();
 
   await TaskRepository.instance.init();
+  await ScheduleRepository.instance.init();
 
   runApp(const VortexAI());
 }
