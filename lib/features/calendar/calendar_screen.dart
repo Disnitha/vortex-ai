@@ -24,7 +24,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       TaskRepository.instance;
 
   final ScheduleGenerationService _scheduleGenerationService =
-    ScheduleGenerationService();
+      ScheduleGenerationService();
 
   DateTime _selectedDate = DateTime.now();
 
@@ -50,16 +50,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final now = DateTime.now();
 
-    final availableStart = now.isAfter(
-      DateTime(now.year, now.month, now.day, 8, 0),
-    )
-        ? now
-        : DateTime(
-            now.year,
-            now.month,
-            now.day,
-            8,
-            0,
+    final availableStart = now.add(
+      const Duration(minutes: 10),
           );
 
     final availableEnd = DateTime(
@@ -202,19 +194,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-void _showMessage(String message) {
-  if (!mounted) {
-    return;
-  }
+  void _showMessage(String message) {
+    if (!mounted) {
+      return;
+    }
 
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
-    );
-}
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+        ),
+      );
+  }
 
   @override
   void initState() {
@@ -286,43 +278,46 @@ void _showMessage(String message) {
                 onDateSelected: _selectDate,
               ),
               const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Schedule',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+              const Text(
+                'Schedule',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _clearSchedule,
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                      ),
+                      label: const Text('Clear'),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _clearSchedule,
-                        icon: const Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                        ),
-                        label: const Text('Clear'),
+                    const SizedBox(width: AppSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: _planMyDay,
+                      icon: const Icon(
+                        Icons.auto_awesome,
+                        size: 18,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      OutlinedButton.icon(
-                        onPressed: _planMyDay,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: const Text('Plan My Day'),
+                      label: const Text('Plan My Day'),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    FilledButton.icon(
+                      onPressed: _generateSchedule,
+                      icon: const Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 18,
                       ),
-                      FilledButton.icon(
-                        onPressed: _generateSchedule,
-                        icon: const Icon(
-                          Icons.auto_awesome_rounded,
-                          size: 18,
-                        ),
-                        label: const Text('Generate'),
-                      ),
-                    ],
-                  ),
-                ],
+                      label: const Text('Generate'),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               Expanded(

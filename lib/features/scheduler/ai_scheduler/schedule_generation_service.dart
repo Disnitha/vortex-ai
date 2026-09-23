@@ -35,8 +35,22 @@ class ScheduleGenerationService {
       },
     ).toList();
 
+    // Tasks that are already scheduled for this day
+    // should not be scheduled again.
+    final scheduledTaskIds = existingScheduledTasks
+        .map((scheduledTask) => scheduledTask.taskId)
+        .toSet();
+
+    final unscheduledTasks = tasks.where((task) {
+      return !scheduledTaskIds.contains(task.id);
+    }).toList();
+
+    if (unscheduledTasks.isEmpty) {
+      return [];
+    }
+
     final generatedBlocks = _coordinator.generateSchedule(
-      tasks: tasks,
+      tasks: unscheduledTasks,
       availableStart: availableStart,
       availableEnd: availableEnd,
       existingBlocks: existingBlocks,
@@ -44,7 +58,9 @@ class ScheduleGenerationService {
 
     final newBlocks = generatedBlocks.where((block) {
       return !existingBlocks.any(
-        (existingBlock) => existingBlock.id == block.id,
+        (existingBlock) =>
+            existingBlock.id == block.id ||
+            existingBlock.taskId == block.taskId,
       );
     }).toList();
 
