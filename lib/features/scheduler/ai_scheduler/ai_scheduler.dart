@@ -10,22 +10,28 @@ class AiScheduler {
     }).toList();
 
     pendingTasks.sort((a, b) {
-      final priorityComparison =
-          _priorityScore(b.priority).compareTo(
-        _priorityScore(a.priority),
-      );
-
-      if (priorityComparison != 0) {
-        return priorityComparison;
+      // Tasks with deadlines always come before tasks
+      // without deadlines.
+      if (a.deadline != null && b.deadline == null) {
+        return -1;
       }
 
-      final deadlineComparison = _compareDeadlines(
-        a.deadline,
-        b.deadline,
-      );
+      if (a.deadline == null && b.deadline != null) {
+        return 1;
+      }
 
-      if (deadlineComparison != 0) {
-        return deadlineComparison;
+      final aScore = _calculateTaskScore(a);
+      final bScore = _calculateTaskScore(b);
+
+      final scoreComparison = bScore.compareTo(aScore);
+
+      if (scoreComparison != 0) {
+        return scoreComparison;
+      }
+
+      // Earlier deadlines come first when scores are equal.
+      if (a.deadline != null && b.deadline != null) {
+        return a.deadline!.compareTo(b.deadline!);
       }
 
       return b.estimatedMinutes.compareTo(
@@ -34,6 +40,29 @@ class AiScheduler {
     });
 
     return pendingTasks;
+  }
+
+  int _calculateTaskScore(Task task) {
+    var score = _priorityScore(task.priority) * 100;
+
+    if (task.deadline != null) {
+      final hoursUntilDeadline =
+          task.deadline!.difference(DateTime.now()).inHours;
+
+      if (hoursUntilDeadline <= 6) {
+        score += 80;
+      } else if (hoursUntilDeadline <= 24) {
+        score += 50;
+      } else if (hoursUntilDeadline <= 48) {
+        score += 25;
+      }
+    }
+
+    if (task.status == TaskStatus.inProgress) {
+      score += 10;
+    }
+
+    return score;
   }
 
   int _priorityScore(TaskPriority priority) {
@@ -47,24 +76,5 @@ class AiScheduler {
       case TaskPriority.urgent:
         return 4;
     }
-  }
-
-  int _compareDeadlines(
-    DateTime? first,
-    DateTime? second,
-  ) {
-    if (first == null && second == null) {
-      return 0;
-    }
-
-    if (first == null) {
-      return 1;
-    }
-
-    if (second == null) {
-      return -1;
-    }
-
-    return first.compareTo(second);
   }
 }
