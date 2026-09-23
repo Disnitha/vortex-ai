@@ -7,6 +7,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../models/scheduled_task.dart';
 import '../../models/task.dart';
 import '../scheduler/ai_scheduler/schedule_generation_service.dart';
+import '../scheduler/ai_scheduler/daily_plan_generation_service.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -26,6 +27,90 @@ class _CalendarScreenState extends State<CalendarScreen> {
     ScheduleGenerationService();
 
   DateTime _selectedDate = DateTime.now();
+
+  Future<void> _planMyDay() async {
+    final taskRepository = TaskRepository.instance;
+
+    final tasks = taskRepository.tasks.where((task) {
+      return task.status == TaskStatus.pending ||
+          task.status == TaskStatus.inProgress;
+    }).toList();
+
+    if (tasks.isEmpty) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No pending tasks to plan.'),
+        ),
+      );
+
+      return;
+    }
+
+    final now = DateTime.now();
+
+    final availableStart = now.isAfter(
+      DateTime(now.year, now.month, now.day, 8, 0),
+    )
+        ? now
+        : DateTime(
+            now.year,
+            now.month,
+            now.day,
+            8,
+            0,
+          );
+
+    final availableEnd = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      22,
+      0,
+    );
+
+    if (!availableStart.isBefore(availableEnd)) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No planning time remaining today.'),
+        ),
+      );
+
+      return;
+    }
+
+    final plan = await DailyPlanGenerationService()
+        .generateAndSaveDailyPlan(
+      tasks: tasks,
+      availableStart: availableStart,
+      availableEnd: availableEnd,
+    );
+
+    if (!mounted) return;
+
+    if (plan.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No available time slots found.'),
+        ),
+      );
+
+      return;
+    }
+
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Planned ${plan.length} task${plan.length == 1 ? '' : 's'} for today.',
+        ),
+      ),
+    );
+  }
 
   Future<void> _clearSchedule() async {
     final hasSchedule = _scheduledTasks.isNotEmpty;
@@ -222,6 +307,11 @@ void _showMessage(String message) {
                         label: const Text('Clear'),
                       ),
                       const SizedBox(width: AppSpacing.sm),
+                      OutlinedButton.icon(
+                        onPressed: _planMyDay,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Plan My Day'),
+                      ),
                       FilledButton.icon(
                         onPressed: _generateSchedule,
                         icon: const Icon(
