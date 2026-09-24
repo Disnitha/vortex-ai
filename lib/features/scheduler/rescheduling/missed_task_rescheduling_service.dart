@@ -48,6 +48,12 @@ class MissedTaskReschedulingService {
       return null;
     }
 
+    // Never reschedule a task beyond its deadline.
+    if (task.deadline != null &&
+        timeBlock.endTime.isAfter(task.deadline!)) {
+      return null;
+    }
+
     await ScheduleRepository.instance.addScheduledTask(
       timeBlock.toScheduledTask(),
     );
