@@ -95,7 +95,7 @@ class SchedulingCoordinator {
     if (lastTaskDuration != null &&
         lastTaskDuration >= 90) {
       final shorterTasks = remainingTasks.where((task) {
-        return task.estimatedMinutes < lastTaskDuration!;
+        return task.estimatedMinutes < lastTaskDuration;
       }).toList();
 
       if (shorterTasks.isNotEmpty) {
