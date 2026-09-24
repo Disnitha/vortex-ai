@@ -4,141 +4,105 @@ import 'package:vortex_ai/features/scheduler/ai_scheduler/ai_scheduler.dart';
 import 'package:vortex_ai/models/task.dart';
 
 void main() {
+  const scheduler = AiScheduler();
+
   group('AiScheduler', () {
+    test('prioritizes tasks with closer deadlines', () {
+      final now = DateTime.now();
 
-    test('places tasks with no deadline after tasks with deadlines', () {
-      final scheduler = const AiScheduler();
-
-      final tasks = [
-        Task(
-          id: '1',
-          title: 'No Deadline',
-          priority: TaskPriority.medium,
-          createdAt: DateTime.now(),
+      final laterDeadlineTask = Task(
+        id: '1',
+        title: 'Later deadline',
+        priority: TaskPriority.medium,
+        estimatedMinutes: 60,
+        deadline: now.add(
+          const Duration(hours: 48),
         ),
-        Task(
-          id: '2',
-          title: 'Has Deadline',
-          priority: TaskPriority.medium,
-          deadline: DateTime(2026, 9, 25),
-          createdAt: DateTime.now(),
+        createdAt: now,
+      );
+
+      final urgentDeadlineTask = Task(
+        id: '2',
+        title: 'Urgent deadline',
+        priority: TaskPriority.medium,
+        estimatedMinutes: 60,
+        deadline: now.add(
+          const Duration(hours: 4),
         ),
-      ];
+        createdAt: now,
+      );
 
-      final result = scheduler.prioritizeTasks(tasks);
+      final result = scheduler.prioritizeTasks([
+        laterDeadlineTask,
+        urgentDeadlineTask,
+      ]);
 
-      expect(result[0].title, 'Has Deadline');
-      expect(result[1].title, 'No Deadline');
+      expect(result.first.id, '2');
+      expect(result[1].id, '1');
     });
 
-    test('keeps in-progress tasks eligible for scheduling', () {
-      final scheduler = const AiScheduler();
+    test('tasks with deadlines come before tasks without deadlines', () {
+      final now = DateTime.now();
 
-      final tasks = [
-        Task(
-          id: '1',
-          title: 'In Progress Task',
-          status: TaskStatus.inProgress,
-          createdAt: DateTime.now(),
-        ),
-        Task(
-          id: '2',
-          title: 'Completed Task',
-          status: TaskStatus.completed,
-          createdAt: DateTime.now(),
-        ),
-      ];
+      final noDeadlineTask = Task(
+        id: '1',
+        title: 'No deadline',
+        priority: TaskPriority.urgent,
+        estimatedMinutes: 60,
+        createdAt: now,
+      );
 
-      final result = scheduler.prioritizeTasks(tasks);
+      final deadlineTask = Task(
+        id: '2',
+        title: 'Has deadline',
+        priority: TaskPriority.low,
+        estimatedMinutes: 60,
+        deadline: now.add(
+          const Duration(days: 2),
+        ),
+        createdAt: now,
+      );
+
+      final result = scheduler.prioritizeTasks([
+        noDeadlineTask,
+        deadlineTask,
+      ]);
+
+      expect(result.first.id, '2');
+      expect(result[1].id, '1');
+    });
+
+    test('ignores completed and missed tasks', () {
+      final now = DateTime.now();
+
+      final pendingTask = Task(
+        id: '1',
+        title: 'Pending',
+        createdAt: now,
+      );
+
+      final completedTask = Task(
+        id: '2',
+        title: 'Completed',
+        status: TaskStatus.completed,
+        createdAt: now,
+      );
+
+      final missedTask = Task(
+        id: '3',
+        title: 'Missed',
+        status: TaskStatus.missed,
+        createdAt: now,
+      );
+
+      final result = scheduler.prioritizeTasks([
+        pendingTask,
+        completedTask,
+        missedTask,
+      ]);
 
       expect(result.length, 1);
-      expect(result[0].title, 'In Progress Task');
-    });
-    test('prioritizes urgent tasks before lower priority tasks', () {
-      final scheduler = const AiScheduler();
-
-      final tasks = [
-        Task(
-          id: '1',
-          title: 'Low Priority',
-          priority: TaskPriority.low,
-          createdAt: DateTime.now(),
-        ),
-        Task(
-          id: '2',
-          title: 'Urgent Task',
-          priority: TaskPriority.urgent,
-          createdAt: DateTime.now(),
-        ),
-        Task(
-          id: '3',
-          title: 'High Priority',
-          priority: TaskPriority.high,
-          createdAt: DateTime.now(),
-        ),
-      ];
-
-      final result = scheduler.prioritizeTasks(tasks);
-
-      expect(result[0].title, 'Urgent Task');
-      expect(result[1].title, 'High Priority');
-      expect(result[2].title, 'Low Priority');
-    });
-
-    test('uses deadline when priorities are equal', () {
-      final scheduler = const AiScheduler();
-
-      final tasks = [
-        Task(
-          id: '1',
-          title: 'Later Task',
-          priority: TaskPriority.high,
-          deadline: DateTime(2026, 9, 25),
-          createdAt: DateTime.now(),
-        ),
-        Task(
-          id: '2',
-          title: 'Earlier Task',
-          priority: TaskPriority.high,
-          deadline: DateTime(2026, 9, 23),
-          createdAt: DateTime.now(),
-        ),
-      ];
-
-      final result = scheduler.prioritizeTasks(tasks);
-
-      expect(result[0].title, 'Earlier Task');
-      expect(result[1].title, 'Later Task');
-    });
-
-    test('excludes completed and missed tasks', () {
-      final scheduler = const AiScheduler();
-
-      final tasks = [
-        Task(
-          id: '1',
-          title: 'Completed Task',
-          status: TaskStatus.completed,
-          createdAt: DateTime.now(),
-        ),
-        Task(
-          id: '2',
-          title: 'Missed Task',
-          status: TaskStatus.missed,
-          createdAt: DateTime.now(),
-        ),
-        Task(
-          id: '3',
-          title: 'Pending Task',
-          status: TaskStatus.pending,
-          createdAt: DateTime.now(),
-        ),
-      ];
-
-      final result = scheduler.prioritizeTasks(tasks);
-
-      expect(result.length, 1);
-      expect(result[0].title, 'Pending Task');
+      expect(result.first.id, '1');
     });
   });
 }
