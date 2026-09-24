@@ -79,8 +79,8 @@ class MissedTaskReschedulingService {
       currentTime.year,
       currentTime.month,
       currentTime.day,
-      22,
-      0,
+      23,
+      59,
     );
 
     if (!availableStart.isBefore(availableEnd)) {

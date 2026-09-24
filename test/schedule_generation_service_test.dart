@@ -205,5 +205,57 @@ void main() {
         DateTime(2026, 9, 26, 12, 0),
       );
     });
+        test('generates a schedule that can be evaluated for quality',
+        () async {
+      final repository = ScheduleRepository.instance;
+
+      await repository.clearAll();
+
+      final service = ScheduleGenerationService(
+        scheduleRepository: repository,
+      );
+
+      final tasks = [
+        Task(
+          id: 'quality_physics',
+          title: 'Physics',
+          priority: TaskPriority.high,
+          estimatedMinutes: 120,
+          createdAt: DateTime.now(),
+        ),
+        Task(
+          id: 'quality_ict',
+          title: 'ICT',
+          priority: TaskPriority.medium,
+          estimatedMinutes: 60,
+          createdAt: DateTime.now(),
+        ),
+      ];
+
+      final start = DateTime(2026, 10, 6, 9, 0);
+      final end = DateTime(2026, 10, 6, 14, 0);
+
+      final result = await service.generateAndSaveSchedule(
+        tasks: tasks,
+        availableStart: start,
+        availableEnd: end,
+      );
+
+      expect(result, isNotEmpty);
+
+      expect(
+        result.any(
+          (block) => block.taskId == 'quality_physics',
+        ),
+        isTrue,
+      );
+
+      expect(
+        result.any(
+          (block) => block.taskId == 'quality_ict',
+        ),
+        isTrue,
+      );
+    });
   });
 }

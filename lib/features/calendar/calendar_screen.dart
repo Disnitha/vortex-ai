@@ -8,6 +8,8 @@ import '../../models/scheduled_task.dart';
 import '../../models/task.dart';
 import '../scheduler/ai_scheduler/schedule_generation_service.dart';
 import '../scheduler/ai_scheduler/daily_plan_generation_service.dart';
+import '../scheduler/optimization/schedule_quality_analyzer.dart';
+import '../scheduler/time_blocking/time_block.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -17,6 +19,21 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+
+  void _showMessage(String message) {
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+        ),
+      );
+  }
+
   final ScheduleRepository _scheduleRepository =
       ScheduleRepository.instance;
 
@@ -27,6 +44,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ScheduleGenerationService();
 
   DateTime _selectedDate = DateTime.now();
+  ScheduleQualityResult? _scheduleQuality;
 
   Future<void> _planMyDay() async {
     final taskRepository = TaskRepository.instance;
@@ -52,14 +70,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final availableStart = now.add(
       const Duration(minutes: 10),
-          );
+    );
 
     final availableEnd = DateTime(
       now.year,
       now.month,
       now.day,
-      22,
-      0,
+      23,
+      59,
     );
 
     if (!availableStart.isBefore(availableEnd)) {
@@ -93,7 +111,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return;
     }
 
-    setState(() {});
+    final scheduledTasks =
+        _scheduleRepository.getScheduledTasksForDate(
+      now,
+    );
+
+    final scheduledBlocks = scheduledTasks.map(
+      (scheduledTask) {
+        return TimeBlock(
+          id: scheduledTask.id,
+          taskId: scheduledTask.taskId,
+          startTime: scheduledTask.startTime,
+          endTime: scheduledTask.endTime,
+        );
+      },
+    ).toList();
+
+    final quality = ScheduleQualityAnalyzer().analyze(
+      tasks: tasks,
+      scheduledBlocks: scheduledBlocks,
+      availableStart: availableStart,
+      availableEnd: availableEnd,
+    );
+
+    setState(() {
+      _scheduleQuality = quality;
+    });
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -102,7 +145,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
     );
-  }
+  } 
 
   Future<void> _clearSchedule() async {
     final hasSchedule = _scheduledTasks.isNotEmpty;
@@ -147,66 +190,68 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _selectedDate,
     );
 
-    _showMessage('Schedule cleared.');
-  }
-
-  Future<void> _generateSchedule() async {
-    final tasks = _taskRepository.tasks.where((task) {
-      return task.status == TaskStatus.pending ||
-          task.status == TaskStatus.inProgress;
-    }).toList();
-
-    if (tasks.isEmpty) {
-      _showMessage('No pending tasks to schedule.');
-      return;
-    }
-
-    final dayStart = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      8,
-      0,
-    );
-
-    final dayEnd = DateTime(
-      _selectedDate.year,
-      _selectedDate.month,
-      _selectedDate.day,
-      22,
-      0,
-    );
-
-    final generatedBlocks =
-        await _scheduleGenerationService.generateAndSaveSchedule(
-      tasks: tasks,
-      availableStart: dayStart,
-      availableEnd: dayEnd,
-    );
-
-    if (generatedBlocks.isEmpty) {
-      _showMessage('No available time slots found.');
-      return;
-    }
-
-    _showMessage(
-      '${generatedBlocks.length} task(s) scheduled.',
-    );
-  }
-
-  void _showMessage(String message) {
     if (!mounted) {
       return;
     }
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-        ),
-      );
+    setState(() {
+      _scheduleQuality = null;
+    });
+
+    _showMessage('Schedule cleared.');
   }
+
+  Future<void> _generateSchedule() async {
+  final tasks = _taskRepository.tasks.where((task) {
+    return task.status == TaskStatus.pending ||
+        task.status == TaskStatus.inProgress;
+  }).toList();
+
+  if (tasks.isEmpty) {
+    _showMessage('No pending tasks to schedule.');
+    return;
+  }
+
+  final dayStart = DateTime(
+    _selectedDate.year,
+    _selectedDate.month,
+    _selectedDate.day,
+    7,
+    0,
+  );
+
+  final dayEnd = DateTime(
+    _selectedDate.year,
+    _selectedDate.month,
+    _selectedDate.day,
+    23,
+    59,
+  );
+
+  final generationResult =
+      await _scheduleGenerationService.generateScheduleWithQuality(
+    tasks: tasks,
+    availableStart: dayStart,
+    availableEnd: dayEnd,
+  );
+
+  final generatedBlocks = generationResult.blocks;
+
+  if (mounted) {
+    setState(() {
+      _scheduleQuality = generationResult.quality;
+    });
+  }
+
+  if (generatedBlocks.isEmpty) {
+    _showMessage('No available time slots found.');
+    return;
+  }
+
+  _showMessage(
+    '${generatedBlocks.length} task(s) scheduled.',
+  );
+}
 
   @override
   void initState() {
@@ -256,6 +301,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _selectDate(DateTime date) {
     setState(() {
       _selectedDate = date;
+      _scheduleQuality = null;
     });
   }
 
@@ -320,6 +366,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
+              if (_scheduleQuality != null) ...[
+                _ScheduleQualityCard(
+                  quality: _scheduleQuality!,
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               Expanded(
                 child: scheduledTasks.isEmpty
                     ? const _EmptySchedule()
@@ -532,6 +584,103 @@ class _ScheduleCard extends StatelessWidget {
     }
 
     return '$minutes min';
+  }
+}
+
+class _ScheduleQualityCard extends StatelessWidget {
+  const _ScheduleQualityCard({
+    required this.quality,
+  });
+
+  final ScheduleQualityResult quality;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Schedule Quality',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${quality.overallScore}/100',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            _QualityRow(
+              label: 'Task coverage',
+              value: quality.taskCoverage,
+            ),
+            _QualityRow(
+              label: 'Deadline safety',
+              value: quality.deadlineSafety,
+            ),
+            _QualityRow(
+              label: 'Conflict-free',
+              value: quality.conflictScore,
+            ),
+            _QualityRow(
+              label: 'Workload balance',
+              value: quality.workloadBalance,
+            ),
+            _QualityRow(
+              label: 'Time utilization',
+              value: quality.timeUtilization,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QualityRow extends StatelessWidget {
+  const _QualityRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            '$value%',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

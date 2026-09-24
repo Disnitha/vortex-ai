@@ -1,20 +1,49 @@
 import '../../../core/services/schedule_repository.dart';
 import '../../../models/task.dart';
+import '../optimization/schedule_quality_analyzer.dart';
 import '../time_blocking/time_block.dart';
 import 'scheduling_coordinator.dart';
+
+class ScheduleGenerationResult {
+  final List<TimeBlock> blocks;
+  final ScheduleQualityResult quality;
+
+  const ScheduleGenerationResult({
+    required this.blocks,
+    required this.quality,
+  });
+}
 
 class ScheduleGenerationService {
   ScheduleGenerationService({
     SchedulingCoordinator? coordinator,
     ScheduleRepository? scheduleRepository,
+    ScheduleQualityAnalyzer? qualityAnalyzer,
   })  : _coordinator = coordinator ?? SchedulingCoordinator(),
         _scheduleRepository =
-            scheduleRepository ?? ScheduleRepository.instance;
+            scheduleRepository ?? ScheduleRepository.instance,
+        _qualityAnalyzer =
+            qualityAnalyzer ?? ScheduleQualityAnalyzer();
 
   final SchedulingCoordinator _coordinator;
   final ScheduleRepository _scheduleRepository;
+  final ScheduleQualityAnalyzer _qualityAnalyzer;
 
   Future<List<TimeBlock>> generateAndSaveSchedule({
+    required List<Task> tasks,
+    required DateTime availableStart,
+    required DateTime availableEnd,
+  }) async {
+    final result = await generateScheduleWithQuality(
+      tasks: tasks,
+      availableStart: availableStart,
+      availableEnd: availableEnd,
+    );
+
+    return result.blocks;
+  }
+
+  Future<ScheduleGenerationResult> generateScheduleWithQuality({
     required List<Task> tasks,
     required DateTime availableStart,
     required DateTime availableEnd,
@@ -24,53 +53,37 @@ class ScheduleGenerationService {
       availableStart,
     );
 
-    final existingBlocks = existingScheduledTasks.map(
-      (scheduledTask) {
-        return TimeBlock(
-          id: scheduledTask.id,
-          taskId: scheduledTask.taskId,
-          startTime: scheduledTask.startTime,
-          endTime: scheduledTask.endTime,
-        );
-      },
-    ).toList();
-
-    // Tasks that are already scheduled for this day
-    // should not be scheduled again.
-    final scheduledTaskIds = existingScheduledTasks
-        .map((scheduledTask) => scheduledTask.taskId)
-        .toSet();
-
-    final unscheduledTasks = tasks.where((task) {
-      return !scheduledTaskIds.contains(task.id);
-    }).toList();
-
-    if (unscheduledTasks.isEmpty) {
-      return [];
+    // Generate is a full schedule regeneration.
+    // Remove the existing schedule for this day first.
+    if (existingScheduledTasks.isNotEmpty) {
+      await _scheduleRepository.removeScheduledTasksForDate(
+        availableStart,
+      );
     }
 
     final generatedBlocks = _coordinator.generateSchedule(
-      tasks: unscheduledTasks,
+      tasks: tasks,
       availableStart: availableStart,
       availableEnd: availableEnd,
-      existingBlocks: existingBlocks,
     );
 
-    final newBlocks = generatedBlocks.where((block) {
-      return !existingBlocks.any(
-        (existingBlock) =>
-            existingBlock.id == block.id ||
-            existingBlock.taskId == block.taskId,
-      );
-    }).toList();
-
-    for (final block in newBlocks) {
+    for (final block in generatedBlocks) {
       await _scheduleRepository.addScheduledTask(
         block.toScheduledTask(),
       );
     }
 
-    return newBlocks;
+    final quality = _qualityAnalyzer.analyze(
+      tasks: tasks,
+      scheduledBlocks: generatedBlocks,
+      availableStart: availableStart,
+      availableEnd: availableEnd,
+    );
+
+    return ScheduleGenerationResult(
+      blocks: generatedBlocks,
+      quality: quality,
+    );
   }
 
   Future<TimeBlock?> scheduleTaskAutomatically({
