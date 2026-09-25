@@ -19,8 +19,11 @@ class SchedulingCoordinator {
     required DateTime availableStart,
     required DateTime availableEnd,
     List<TimeBlock> existingBlocks = const [],
+    bool preserveTaskOrder = false,
   }) {
-    final prioritizedTasks = _scheduler.prioritizeTasks(tasks);
+    final prioritizedTasks = preserveTaskOrder
+        ? [...tasks]
+        : _scheduler.prioritizeTasks(tasks);
 
     final scheduledBlocks = <TimeBlock>[
       ...existingBlocks,
@@ -36,6 +39,7 @@ class SchedulingCoordinator {
       final task = _selectNextTask(
         remainingTasks: remainingTasks,
         lastTaskDuration: lastTaskDuration,
+        preserveTaskOrder: preserveTaskOrder,
       );
 
       if (task == null) {
@@ -72,9 +76,14 @@ class SchedulingCoordinator {
   Task? _selectNextTask({
     required List<Task> remainingTasks,
     required int? lastTaskDuration,
+    required bool preserveTaskOrder,
   }) {
     if (remainingTasks.isEmpty) {
       return null;
+    }
+
+    if (preserveTaskOrder) {
+      return remainingTasks.first;
     }
 
     // Deadline tasks always take priority.
@@ -109,7 +118,7 @@ class SchedulingCoordinator {
       }
     }
 
-    // Otherwise preserve the AI scheduler's priority order.
+    // Otherwise preserve the scheduler's priority order.
     return remainingTasks.first;
   }
 }

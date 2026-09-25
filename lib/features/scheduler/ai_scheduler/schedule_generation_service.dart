@@ -1,8 +1,11 @@
 import '../../../core/services/schedule_repository.dart';
 import '../../../models/task.dart';
-import '../optimization/schedule_quality_analyzer.dart';
+
 import '../time_blocking/time_block.dart';
-import 'scheduling_coordinator.dart';
+
+import '../optimization/schedule_optimizer.dart';
+import '../optimization/schedule_quality_analyzer.dart';
+
 
 class ScheduleGenerationResult {
   final List<TimeBlock> blocks;
@@ -16,18 +19,15 @@ class ScheduleGenerationResult {
 
 class ScheduleGenerationService {
   ScheduleGenerationService({
-    SchedulingCoordinator? coordinator,
     ScheduleRepository? scheduleRepository,
-    ScheduleQualityAnalyzer? qualityAnalyzer,
-  })  : _coordinator = coordinator ?? SchedulingCoordinator(),
-        _scheduleRepository =
+    ScheduleOptimizer? optimizer,
+  })  : _scheduleRepository =
             scheduleRepository ?? ScheduleRepository.instance,
-        _qualityAnalyzer =
-            qualityAnalyzer ?? ScheduleQualityAnalyzer();
+        _optimizer = optimizer ?? ScheduleOptimizer();
 
-  final SchedulingCoordinator _coordinator;
+
   final ScheduleRepository _scheduleRepository;
-  final ScheduleQualityAnalyzer _qualityAnalyzer;
+  final ScheduleOptimizer _optimizer;
 
   Future<List<TimeBlock>> generateAndSaveSchedule({
     required List<Task> tasks,
@@ -61,28 +61,21 @@ class ScheduleGenerationService {
       );
     }
 
-    final generatedBlocks = _coordinator.generateSchedule(
+    final optimizationResult = _optimizer.optimize(
       tasks: tasks,
       availableStart: availableStart,
       availableEnd: availableEnd,
     );
 
-    for (final block in generatedBlocks) {
+    for (final block in optimizationResult.blocks) {
       await _scheduleRepository.addScheduledTask(
         block.toScheduledTask(),
       );
     }
 
-    final quality = _qualityAnalyzer.analyze(
-      tasks: tasks,
-      scheduledBlocks: generatedBlocks,
-      availableStart: availableStart,
-      availableEnd: availableEnd,
-    );
-
     return ScheduleGenerationResult(
-      blocks: generatedBlocks,
-      quality: quality,
+      blocks: optimizationResult.blocks,
+      quality: optimizationResult.quality,
     );
   }
 
